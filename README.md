@@ -5,7 +5,7 @@
 ## Usage
 
 ```yaml
-- uses: Framework-R-D/action-get-pr-info@e0d526cc97cfe9bbeff360a1b8be9679f32ec114 # v1
+- uses: Framework-R-D/action-get-pr-info@25fa7302840aaf7330af010571bcd3c881a6770e # v2
 ```
 
 ## Inputs
