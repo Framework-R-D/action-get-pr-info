@@ -16,19 +16,38 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - id: get_pr_info
+    - name: Prepare metadata snapshot
+      id: snapshot
+      shell: bash
+      run: |
+        python3 -I "$GITHUB_ACTION_PATH/pr_metadata.py" --prepare
+
+    - name: Fetch PR metadata
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        PR_NUMBER: ${{ steps.snapshot.outputs.pr_number }}
+        METADATA_PATH: ${{ steps.snapshot.outputs.path }}
       with:
         script: |
+          // Only API transport lives here; Python owns validation and output policy.
+          const fs = require('node:fs');
           const pr = await github.rest.pulls.get({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            pull_number: context.issue.number
+            pull_number: Number(process.env.PR_NUMBER)
           });
-          core.setOutput('ref', pr.data.head.ref);
-          core.setOutput('sha', pr.data.head.sha);
-          core.setOutput('repo', pr.data.head.repo.full_name);
-          core.setOutput('base_sha', pr.data.base.sha);
+          fs.writeFileSync(process.env.METADATA_PATH,
+            JSON.stringify({ head: pr.data.head, base: pr.data.base }),
+            { flag: 'wx', mode: 0o600 });
+
+    - name: Validate PR metadata and publish outputs
+      id: get_pr_info
+      shell: bash
+      env:
+        METADATA_PATH: ${{ steps.snapshot.outputs.path }}
+      run: |
+        python3 -I "$GITHUB_ACTION_PATH/pr_metadata.py"
+
     - name: React to comment
       if: github.event_name == 'issue_comment'
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
