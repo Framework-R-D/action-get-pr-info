@@ -61,7 +61,10 @@ def validate_metadata(metadata: Mapping[str, Any], repository: str) -> dict[str,
     base_repo = base.get("repo")
     if not isinstance(head_repo, Mapping) or not isinstance(base_repo, Mapping):
         raise ValueError("PR repository identity is missing")
-    target_repo = validate_repository(head_repo.get("full_name"))
+    head_repository = head_repo.get("full_name")
+    if not isinstance(head_repository, str):
+        raise ValueError("PR repository identity is missing")
+    target_repo = validate_repository(head_repository)
     if base_repo.get("full_name") != repository:
         raise ValueError("PR base repository does not match the requested repository")
     sha = head.get("sha")

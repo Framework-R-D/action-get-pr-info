@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 from pr_metadata import (
     event_pr_number,
@@ -33,7 +34,7 @@ class PrMetadataTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
         self.event = {"issue": {"number": 1, "pull_request": {}}}
-        self.metadata = {
+        self.metadata: dict[str, dict[str, Any]] = {
             "head": {"ref": "feature/test", "sha": SHA, "repo": {"full_name": "Fork/target"}},
             "base": {"sha": BASE, "repo": {"full_name": "Example/target"}},
         }
@@ -47,14 +48,16 @@ class PrMetadataTests(unittest.TestCase):
 
     def test_malformed_or_deleted_head_metadata_is_rejected(self) -> None:
         """Reject every malformed field covered by the previous Node fixture."""
-        for change in [
+        changes: list[dict[str, Any]] = [
             {"ref": "feature\nsha=spoof"},
             {"sha": ""},
             {"sha": "0" * 40},
             {"repo": None},
+            {"repo": {"full_name": None}},
             {"repo": {"full_name": "X/../target"}},
             {"ref": "x:refs/heads/main"},
-        ]:
+        ]
+        for change in changes:
             metadata = copy.deepcopy(self.metadata)
             metadata["head"].update(change)
             with self.subTest(change=change), self.assertRaises(ValueError):
