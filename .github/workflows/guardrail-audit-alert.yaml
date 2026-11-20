@@ -62,11 +62,12 @@ jobs:
             --arg actor "$ACTOR" \
             '{text: "⚠️ *Direct Push to Main Detected!*\n*Repo:* `\($repo)`\n*Actor:* `@\($actor)`\n*Commit:* `\($msg)`"}')
 
-          SLACK_RESPONSE=$(curl --fail-with-body --silent --show-error -X POST \
+          SLACK_RESPONSE=$(curl --silent --show-error -X POST \
             -H 'Content-type: application/json' --data "$PAYLOAD" \
             --write-out '\n%{http_code}' "$SLACK_URL")
           SLACK_STATUS=${SLACK_RESPONSE##*$'\n'}
           if [ "$SLACK_STATUS" != "200" ]; then
-            echo "::error::Slack webhook returned HTTP ${SLACK_STATUS}; expected HTTP 200."
+            printf '::error::Slack webhook returned HTTP %s; expected HTTP 200. Body: %s\n' \
+              "$SLACK_STATUS" "${SLACK_RESPONSE%$'\n'*}"
             exit 1
           fi

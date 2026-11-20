@@ -59,7 +59,7 @@ class GuardrailAlertTests(unittest.TestCase):
                 "import json, os, sys\n"
                 'with open(os.environ["CURL_ARGS"], "w") as stream:\n'
                 "    json.dump(sys.argv[1:], stream)\n"
-                'print("ok")\nprint(os.environ["HTTP_STATUS"])\n'
+                'print(os.environ["HTTP_BODY"])\nprint(os.environ["HTTP_STATUS"])\n'
                 'sys.exit(int(os.environ["CURL_EXIT"]))\n'
             )
             curl.chmod(0o755)
@@ -74,6 +74,7 @@ class GuardrailAlertTests(unittest.TestCase):
                     "GH_EXIT": "0",
                     "CURL_EXIT": "0",
                     "HTTP_STATUS": "200",
+                    "HTTP_BODY": "ok",
                     "GH_TOKEN": "test-token",
                     "SLACK_URL": "https://example.invalid",
                     "COMMIT_MSG": "test",
@@ -189,7 +190,7 @@ class GuardrailAlertTests(unittest.TestCase):
             ("302", "0"),
             ("307", "0"),
             ("308", "0"),
-            ("400", "22"),
+            ("400", "0"),
             ("000", "7"),
         ]:
             with self.subTest(status=status):
@@ -200,6 +201,13 @@ class GuardrailAlertTests(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode == 0, status == "200")
                 self.assertIsNotNone(curl)
+
+    def test_slack_http_error_body_is_reported(self) -> None:
+        """HTTP failures retain the provider's response for diagnostics."""
+        result, curl, _ = self.run_script("[[]]", HTTP_STATUS="400", HTTP_BODY="invalid_payload")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIsNotNone(curl)
+        self.assertIn("Body: invalid_payload", result.stdout)
 
     def test_payload_escapes_untrusted_values(self) -> None:
         """Messages and actor names stay data rather than executable shell input."""
